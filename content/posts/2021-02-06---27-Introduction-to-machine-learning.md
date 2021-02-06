@@ -1,0 +1,218 @@
+---
+title: 27. Introduction to Machine Learning
+date: "2021-02-06T20:40:32.169Z"
+template: "post"
+draft: false
+slug: "27-Introduction-to-machine-learning"
+category: "R"
+tags:
+  - "Machine Learning"
+  - "R"
+description: "Note from reading Introduction to Machine Learning"
+socialImage: "/media/blog/2021-01-17_01.png"
+---
+
+
+# Introduction to Data Science
+
+## 27.5 Exercises
+
+Departments of Computer Science and Biostatistics, as well as remotely through the Extension School. The biostatistics class was taught in 2016 along with an online version offered by the Extension School. On 2016-01-25 at 8:15 AM, during one of the lectures, the instructors asked students to fill in the sex and height questionnaire that populated the `reported_height` dataset. The online students filled the survey during the next few days, after the lecture was posted online. We can use this insight to define a variable, call it `type`, to denote the type of student: `inclass` or `online`:
+
+```r
+library(dslabs)
+library(dplyr)
+library(lubridate)
+library(caret)
+
+data("reported_heights")data("reported_heights")
+
+dat <- mutate(reported_heights, date_time = ymd_hms(time_stamp)) %>%  filter(date_time >= make_date(2016, 01, 25) &            
+date_time < make_date(2016, 02, 1)) %>%  mutate(type = ifelse(day(date_time) == 25 & hour(date_time) == 8 &                          
+between(minute(date_time), 15, 30),
+                       "inclass", "online")) %>% select(sex, type)
+x <- dat$type
+y <- factor(dat$sex, c("Female", "Male"))
+```
+
+1. Show summary statistics that indicate that the `type` is predictive of sex.
+
+```r
+s = dat %>% group_by(type) %>% summarise(female= mean(sex == 'Female'))
+```
+
+```r
+# A tibble: 2 x 2  
+type    female  
+<chr>    <dbl>
+1 inclass  0.667
+2 online   0.378
+```
+
+2. Instead of using height to predict sex, use the `type` variable.
+
+```r
+q2 = dat %>% group_by(type) %>% summarise(Av.Male = mean(sex == "Male"), Av.Female = mean(sex == "Female"))
+```
+
+```r
+type    Av.Male Av.Female  
+<chr>     <dbl>     <dbl>
+1 inclass   0.333     0.667
+2 online    0.622     0.378
+```
+
+3. Show the confusion matrix.
+
+```r
+table(y_hat, y)
+```
+
+```r
+         y
+y_hat    Female Male  
+Female     26   13  
+Male       42   69
+```
+
+4. Use the `confusionMatrix` function in the **caret** package to report accuracy.
+
+```r
+cm <- confusionMatrix(data = y_hat, reference = y)
+cm$overall['Accuracy']
+```
+
+```r
+Accuracy 
+0.6333333
+```
+
+```r
+Confusion Matrix and Statistics
+           Reference
+Prediction Female Male    
+Female     26   13    
+Male       42   69                                                         
+
+Accuracy : 0.6333                           
+95% CI : (0.5508, 0.7104)    
+No Information Rate : 0.5467              
+P-Value [Acc > NIR] : 0.0195893                                                                   Kappa : 0.2323                                                     
+Mcnemar's Test P-Value : 0.0001597                                                             Sensitivity : 0.3824                      
+Specificity : 0.8415                   
+Pos Pred Value : 0.6667                   
+Neg Pred Value : 0.6216                       
+Prevalence : 0.4533                   
+Detection Rate : 0.1733             
+Detection Prevalence : 0.2600                
+Balanced Accuracy : 0.6119    
+                                                       
+'Positive' Class : Female
+```
+
+5. Now use the `sensitivity` and `specificity` functions to report specificity and sensitivity.
+
+```r
+sensitivity(y_hat, y)
+[1] 0.3823529
+
+specificity(y_hat, y)
+[1] 0.8414634
+```
+
+6. What is the prevalence (% of females) in the `dat` dataset defined above?
+
+```r
+mean(y == 'Female')
+[1] 0.4533333
+```
+
+# Exercise
+
+![](/media/blog/intro-ds/27-8.png)
+
+$$\begin{aligned}
+P(\text{disease} | \text{test}+) = P(\text{test}+ | \text{disease}) \times \frac{P(\text{disease})}{P(\text{test}+)} 
+\\= \frac{P(\text{test}+ | \text{disease})P(\text{disease})}{P(\text{test}+ | \text{disease})P(\text{disease})+P(\text{test}+ | \text{healthy})P(\text{healthy})]} \\= \frac{0.85 \times 0.02}{0.85 \times 0.02 + 0.1 \times 0.98} 
+\\= 0.147826
+\end{aligned}$$
+
+```r
+# set.seed(1) # if using R 3.5 or earlier
+set.seed(1, sample.kind = "Rounding") # if using R 3.6 or later
+disease <- sample(c(0,1), size=1e6, replace=TRUE, prob=c(0.98,0.02))
+test <- rep(NA, 1e6)
+test[disease==0] <- sample(c(0,1), size=sum(disease==0), replace=TRUE, prob=c(0.90,0.10))
+test[disease==1] <- sample(c(0,1), size=sum(disease==1), replace=TRUE, prob=c(0.15, 0.85))
+```
+
+```r
+mean(test[disease==1]==1) #P(T|D)
+[1] 0.8461191
+
+mean(test[disease==0]==0) #P(T-|D-)
+[1] 0.9003594
+```
+
+```r
+table(test, disease)
+          disease
+test      0      1
+   0 882426   3065
+   1  97656  16853
+```
+
+1. Using Bayes' theorem, calculate the probability that you have the disease if the test is positive.
+
+    ```r
+    mean(disease[test==1])
+    ```
+
+    ```r
+    0.147826
+    ```
+
+2. What is the probability that a test is positive?
+
+    ```r
+    mean(test==1)
+    ```
+
+    ```r
+    [1] 0.114509
+    ```
+
+3. What is the probability that an individual has the disease if the test is negative?
+
+    ```r
+    mean(disease[test==0]==1)
+    ```
+
+    ```r
+    [1] 0.003461356
+    ```
+
+4. What is the probability that you have the disease if the test is positive?
+Remember: calculate the conditional probability the disease is positive assuming a positive test.
+
+    ```r
+    mean(disease[test==1]==1)
+    ```
+
+    ```r
+    [1] 0.1471762
+    ```
+
+5. Compare the prevalence of disease in people who test positive to the overall prevalence of disease.
+
+    If a patient's test is positive, by how many times does that increase their risk of having the disease?
+
+    First calculate the probability of having the disease given a positive test, then divide by the probability of having the disease.
+
+    ```r
+    mean(disease[test==1]==1) / mean(disease==1)
+    ```
+
+    ```r
+    [1] 7.389106
+    ```
